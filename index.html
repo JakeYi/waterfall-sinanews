@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://code.jquery.com/jquery-1.9.1.js"></script>
+    <title>新浪新闻byFrank</title>
+    <style>
+        * {
+            margin: 0px;
+            padding: 0px;
+            box-sizing: border-box;
+        }
+
+        ul,
+        li {
+            list-style: none;
+        }
+
+        .wrap {
+            width: 900px;
+            margin: 0 auto;
+        }
+
+        .clearfix:after {
+            content: '';
+            display: block;
+            clear: both;
+        }
+
+        #pic-ct {
+            position: relative;
+        }
+
+        #pic-ct a {
+            display: inline-block;
+            margin: 10px;
+        }
+
+        #pic-ct .item {
+            position: absolute;
+            padding: 0 0 10px 0;
+            width: 280px;
+            margin: 10px;
+            border: 1px solid #dfdfdf;
+            background: #fff;
+            opacity: 1;
+            transition: all .8s;
+        }
+
+        #pic-ct .item img {
+            width: 100%;
+        }
+
+        #pic-ct .item .header {
+            margin: 0 12px;
+        }
+
+        #pic-ct .desp {
+            font-size: 12px;
+            line-height: 1.8;
+            margin: 10px 15px 0;
+            color: #777371;
+        }
+
+        #load {
+            display: hidden;
+            height: 20px;
+        }
+
+        .hide {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="ct-waterfall">
+            <ul id='pic-ct' class='clearfix'>
+                <!-- <li class="item">
+                    <a href="#" class="link">
+                        <img src="http://n.sinaimg.cn/tech/transform/200/w600h400/20190520/0b38-hxhyium2602542.jpg" >
+                    </a>
+                    <h4 class="header">标题</h4>
+                    <p class="desp">
+                        圆明园又添黑天鹅宝宝 超级萌
+                    </p>
+                </li>
+                用于计算item宽度和列数，但不展示出来-->
+                <li class="item hide"></li>
+            </ul>
+            <div id="load">我是看不见的</div>
+
+        </div>
+    </div>
+    <script>
+        var Helper = {
+            isVisible: function($el){
+                var scrollHeight = $(window).scrollTop()
+                var winHeight = $(window).height()
+                var top = $el.offset().top
+
+                if(top < scrollHeight + winHeight){
+                    return true
+                }else{
+                    return false
+                }
+            
+            },
+            getNode: function (item) {
+                var tql = ''
+                tql += '<li class="item">'
+                tql += '<a href = " '+ item.url +'"  class="link"><img src=" '+ item.thumb +' " ></a>'
+                tql += '<h4 class="header">" '+ item.stitle +' "</h4>'
+                tql += '<p class="desp"> '+ item.title +' </p> '
+                tql += '</li>'
+                return $(tql)
+            }
+            
+        }
+
+        var New = {
+            init: function(){
+                var _this = this
+                this.perPageCount = 10
+                this.curPage = 1
+                this.idx = 0
+                this.isLoading= false
+                this.minSumHeight = 0
+                this.colSumHeight = []
+                this.nodeWidth = $('.item').outerWidth(true)
+                this.colNum = parseInt( $('#pic-ct').width() / this.nodeWidth )
+                for(var i = 0; i < this.colNum; i++) {
+                    _this.colSumHeight[i] = 0
+                }
+                this.bind()
+                this.getData(function(newlist){
+                    $.each(newlist, function(idx , news){
+                        let $node = Helper.getNode(news)
+                        $node.find('img').load(function(){
+                            $('#pic-ct').append($node)
+                            _this.waterFallPlace($node)
+                        })
+                    })
+                })
+            },
+            bind: function () {
+                var _this = this
+                $(window).scroll(function(){
+                    if(Helper.isVisible($('#load')) && !_this.isLoading){
+                        _this.getData(function(newlist){
+                        $.each(newlist, function(idx , news){
+                            let $node = Helper.getNode(news)
+                            $node.find('img').load(function(){
+                                $('#pic-ct').append($node)
+                                _this.waterFallPlace($node)
+                            })
+                        })
+                    })
+                    }
+                })
+            },
+            getData: function(callback){
+                var _this = this 
+                _this.isLoading = true
+                $.ajax({
+                    url:'https://photo.sina.cn/aj/v2/index?cate=military',
+                    dataType: 'jsonp',
+                    jsonp: 'callback',
+                    data: {
+                        pagesize: _this.perPageCount,
+                        page: _this.curPage
+                    }
+                }).done(function(ret){
+                    console.log(ret)
+                    _this.isLoading = false
+                    _this.curPage++
+                    callback(ret.data)
+                }).fail(function(){
+                    conosle.log('error is loading')
+                })
+            },
+            waterFallPlace: function($node){
+                var _this = this
+                _this.minSumHeight = _this.colSumHeight[0]
+                _this.idx = 0
+                for(var i = 0; i < _this.colNum ; i++){
+                    if(_this.colSumHeight[i] < _this.minSumHeight){
+                        _this.idx = i
+                        _this.minSumHeight = _this.colSumHeight[i]
+                    }
+                }
+                $node.css({
+                    left: _this.idx * _this.nodeWidth,
+                    top: _this.minSumHeight
+                })
+                _this.colSumHeight[_this.idx] += $node.outerHeight(true)
+                $('#pic-ct').height(Math.max.apply(null, _this.colSumHeight))
+            }
+        }
+        New.init()
+    </script>
+</body>
+
+</html>
